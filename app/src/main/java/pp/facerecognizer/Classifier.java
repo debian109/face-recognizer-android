@@ -24,6 +24,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 
 import java.io.FileDescriptor;
 import java.nio.FloatBuffer;
@@ -187,12 +188,13 @@ public class Classifier {
 
     }
 
-    void updateData(int label, ContentResolver contentResolver, ArrayList<Uri> uris) throws Exception {
+    void updateData(int label, ContentResolver contentResolver, List<Uri> uris) throws Exception {
         synchronized (this) {
             ArrayList<float[]> list = new ArrayList<>();
 
             for (Uri uri : uris) {
                 Bitmap bitmap = getBitmapFromUri(contentResolver, uri);
+                Log.d("TAG", "training"+bitmap.toString());
                 Pair faces[] = mtcnn.detect(bitmap);
 
                 float max = 0f;
@@ -214,6 +216,57 @@ public class Classifier {
             }
 
             svm.train(label, list);
+            if(listener!=null)
+                listener.onCompleted();
+            Log.d("TAG", "training: DONE");
+        }
+    }
+
+    CompleteListener listener;
+
+    void setListener(CompleteListener listener){
+        this.listener = listener;
+    }
+
+    interface  CompleteListener{
+        void onCompleted();
+    }
+
+
+
+    void training(int label,ArrayList<float[]> list){
+        synchronized (this) {
+            Log.d("TAG", "run: " +list);
+            svm.train(label, list);
+        }
+    }
+
+    Pair<Integer,ArrayList<float[]>> updateData1(int label, ContentResolver contentResolver, List<Uri> uris) throws Exception {
+        synchronized (this) {
+            ArrayList<float[]> list = new ArrayList<>();
+
+            for (Uri uri : uris) {
+                Bitmap bitmap = getBitmapFromUri(contentResolver, uri);
+                Pair faces[] = mtcnn.detect(bitmap);
+                float max = 0f;
+                Rect rect = new Rect();
+
+                for (Pair face : faces) {
+                    Float prob = (Float) face.second;
+                    if (prob > max) {
+                        max = prob;
+
+                        RectF rectF = (RectF) face.first;
+                        rectF.round(rect);
+                    }
+                }
+
+                float[] emb_array = new float[EMBEDDING_SIZE];
+                faceNet.getEmbeddings(bitmap, rect).get(emb_array);
+                list.add(emb_array);
+            }
+            return new Pair(label,list);
+
         }
     }
 
