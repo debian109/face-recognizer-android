@@ -271,9 +271,10 @@ public class Classifier {
     }
 
     int addPerson(String name) {
-        FileUtils.appendText(name, FileUtils.LABEL_FILE);
-        classNames.add(name);
-
+        if(!classNames.contains(name)){
+            FileUtils.appendText(name, FileUtils.LABEL_FILE);
+            classNames.add(name);
+        }
         return classNames.size();
     }
 

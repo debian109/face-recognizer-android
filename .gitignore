@@ -14,3 +14,4 @@
 /build
 /captures
 .externalNativeBuild
+/app/src/main/assets/facenet.pb
