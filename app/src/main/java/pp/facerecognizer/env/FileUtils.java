@@ -53,6 +53,11 @@ public class FileUtils {
         }
     }
 
+    public  static  boolean hasModel(){
+        File model = new File(ROOT+File.separator+MODEL_FILE);
+        return (model.length())>0;
+    }
+
     public static void copyAsset(AssetManager mgr, String filename) {
         InputStream in = null;
         OutputStream out = null;

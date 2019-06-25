@@ -35,6 +35,7 @@ import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -274,6 +275,10 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
         runInBackground(
                 () -> {
+                    if(!FileUtils.hasModel()){
+                        Toast.makeText(this, "Please Training data!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     LOGGER.i("Running detection on image " + currTimestamp);
                     final long startTime = SystemClock.uptimeMillis();
 
