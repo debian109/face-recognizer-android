@@ -116,6 +116,7 @@ public class TrainingActivity extends AppCompatActivity implements Classifier.Co
     void training(){
         try{
             numberTraining = Integer.parseInt(et.getText().toString());
+            FileUtils.clear(FileUtils.LABEL_FILE);
         }catch (Exception e){
 
         }
@@ -129,7 +130,7 @@ public class TrainingActivity extends AppCompatActivity implements Classifier.Co
             File[] files = array[i].listFiles();
             ArrayList<Uri> uris = new ArrayList<>();
             if(files!=null && files.length>0){
-                classifier.addPerson(array[i].getName());
+                FileUtils.appendText(array[i].getName(), FileUtils.LABEL_FILE);
                 for (File file:files){
                     if(file.getPath().contains(".jpg"))
                         uris.add(Uri.fromFile(file));

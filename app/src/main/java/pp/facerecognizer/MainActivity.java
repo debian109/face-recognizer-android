@@ -287,8 +287,10 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                             classifier.recognizeImage(croppedBitmap,cropToFrameTransform);
 
                     lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-                    tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
-                    trackingOverlay.postInvalidate();
+                    if(mappedRecognitions!=null){
+                        tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
+                        trackingOverlay.postInvalidate();
+                    }
 
                     requestRender();
                     computingDetection = false;

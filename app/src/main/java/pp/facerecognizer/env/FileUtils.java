@@ -106,6 +106,16 @@ public class FileUtils {
         }
     }
 
+    public static void clear(String filename) {
+        try(FileWriter fw = new FileWriter(ROOT + File.separator + filename, false);
+            PrintWriter out = new PrintWriter(new BufferedWriter(fw))) {
+            out.print("");
+        } catch (IOException e) {
+            //exception handling left as an exercise for the reader
+            LOGGER.e(e, "IOException!");
+        }
+    }
+
     public static ArrayList<String> readLabel(String filename) throws FileNotFoundException{
         Scanner s = new Scanner(new File(ROOT + File.separator + filename));
         ArrayList<String> list = new ArrayList<>();
