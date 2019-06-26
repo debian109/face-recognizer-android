@@ -102,6 +102,7 @@ public abstract class CameraActivity extends AppCompatActivity
     */
     @Override
     public void onImageAvailable(final ImageReader reader) {
+
         //We need wait until we have some size from onPreviewSizeChosen
         if (previewWidth == 0 || previewHeight == 0) {
             return;
@@ -259,6 +260,34 @@ public abstract class CameraActivity extends AppCompatActivity
                 // We don't use a front facing camera in this sample.
                 final Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
                 if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                    continue;
+                }
+
+                final StreamConfigurationMap map =
+                        characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+
+                if (map == null) {
+                    continue;
+                }
+
+                return cameraId;
+            }
+        } catch (CameraAccessException e) {
+            LOGGER.e(e, "Not allowed to access camera");
+        }
+
+        return null;
+    }
+
+    protected String chooseFrontCamera() {
+        final CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        try {
+            for (final String cameraId : manager.getCameraIdList()) {
+                final CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+
+                // We don't use a front facing camera in this sample.
+                final Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
                     continue;
                 }
 

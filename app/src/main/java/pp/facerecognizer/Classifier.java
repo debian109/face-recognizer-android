@@ -23,6 +23,7 @@ import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
+import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 
@@ -31,6 +32,7 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import androidx.core.util.Pair;
 import pp.facerecognizer.env.FileUtils;
@@ -188,6 +190,51 @@ public class Classifier {
 
     }
 
+    public int count =0;
+
+    float[] updateDataRealTime(int label, Bitmap bitmap) throws Exception {
+
+            ArrayList<float[]> list = new ArrayList<>();
+
+            long prodTime = System.currentTimeMillis();
+                Log.d("TAG", "training RealTime FACEEEEEE "+ prodTime);
+                Pair faces[] = mtcnn.detect(bitmap);
+            long time =TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - prodTime);
+            Log.d("TAG", "training RealTime ENDDDDD "+ time);
+                if(faces.length>0){
+                    count++;
+                    listener.onTrained();
+
+                if(count<= 50) {
+
+                    float max = 0f;
+                    Rect rect = new Rect();
+
+                    for (Pair face : faces) {
+                        Float prob = (Float) face.second;
+                        if (prob > max) {
+                            max = prob;
+
+                            RectF rectF = (RectF) face.first;
+                            rectF.round(rect);
+                        }
+
+                    }
+                    float[] emb_array = new float[EMBEDDING_SIZE];
+                    faceNet.getEmbeddings(bitmap, rect).get(emb_array);
+                    return  emb_array;
+                    }
+                }
+
+        return null;
+    }
+
+    protected void trainData(int label, ArrayList<float[]> list){
+        svm.train(label, list);
+        listener.onCompleted();
+    }
+
+
     void updateData(int label, ContentResolver contentResolver, List<Uri> uris) throws Exception {
         synchronized (this) {
             ArrayList<float[]> list = new ArrayList<>();
@@ -230,6 +277,7 @@ public class Classifier {
 
     interface  CompleteListener{
         void onCompleted();
+        void onTrained();
     }
 
 

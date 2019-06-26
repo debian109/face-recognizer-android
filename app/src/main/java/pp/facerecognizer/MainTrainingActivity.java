@@ -30,6 +30,7 @@ import android.media.ImageReader.OnImageAvailableListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.View;
@@ -56,7 +57,7 @@ import pp.facerecognizer.tracking.MultiBoxTracker;
 * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
 * objects.
 */
-public class MainActivity extends CameraActivity implements OnImageAvailableListener {
+public class MainTrainingActivity extends CameraActivity implements OnImageAvailableListener, Classifier.CompleteListener {
     private static final Logger LOGGER = new Logger();
 
     private static final int FACE_SIZE = 160;
@@ -95,38 +96,63 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
     private boolean initialized = false;
     private boolean training = false;
+    private int mLable = -1;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        setContentView(R.layout.training_activity_camera);
+        mLable = getIntent().getIntExtra("lable",-1);
         FrameLayout container = findViewById(R.id.container);
         initSnackbar = Snackbar.make(container, "Initializing...", Snackbar.LENGTH_INDEFINITE);
         trainSnackbar = Snackbar.make(container, "Training data...", Snackbar.LENGTH_INDEFINITE);
 
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_edittext, null);
         EditText editText = dialogView.findViewById(R.id.edit_text);
-        AlertDialog editDialog = new AlertDialog.Builder(MainActivity.this)
+        AlertDialog editDialog = new AlertDialog.Builder(MainTrainingActivity.this)
                 .setTitle(R.string.enter_name)
                 .setView(dialogView)
                 .setPositiveButton(getString(R.string.ok), (dialogInterface, i) -> {
                     int idx = classifier.addPerson(editText.getText().toString());
-                    performFileSearch(idx - 1);
+//                    performFileSearch(idx - 1);
                 })
                 .create();
 
         button = findViewById(R.id.add_button);
         button.setOnClickListener(view ->
-                new AlertDialog.Builder(MainActivity.this)
+                new AlertDialog.Builder(MainTrainingActivity.this)
                         .setTitle(getString(R.string.select_name))
                         .setItems(classifier.getClassNames(), (dialogInterface, i) -> {
                             if (i == 0) {
                                 editDialog.show();
                             } else {
-                                performFileSearch(i - 1);
+//                                performFileSearch(i - 1);
                             }
                         })
                         .show());
+    }
+
+    @Override
+    protected void setFragment() {
+        String cameraId = chooseFrontCamera();
+
+        CameraConnectionFragment camera2Fragment =
+                CameraConnectionFragment.newInstance(
+                        (size, rotation) -> {
+                            previewHeight = size.getHeight();
+                            previewWidth = size.getWidth();
+                            this.onPreviewSizeChosen(size, rotation);
+                        },
+                        this,
+                        getLayoutId(),
+                        getDesiredPreviewFrameSize());
+
+        camera2Fragment.setCamera(cameraId);
+
+        getFragmentManager()
+                .beginTransaction()
+                .replace(R.id.container, camera2Fragment)
+                .commit();
     }
 
     @Override
@@ -179,7 +205,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                     if (copy == null) {
                         return;
                     }
-
+                    LOGGER.e("Exception initializing classifier!","ABCCC");
                     final int backgroundColor = Color.argb(100, 0, 0, 0);
                     canvas.drawColor(backgroundColor);
 
@@ -187,7 +213,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                     final float scaleFactor = 2;
                     matrix.postScale(scaleFactor, scaleFactor);
                     matrix.postTranslate(
-                            canvas.getWidth() - copy.getWidth() * scaleFactor,
+                             canvas.getWidth() - copy.getWidth() * scaleFactor,
                             canvas.getHeight() - copy.getHeight() * scaleFactor);
                     canvas.drawBitmap(copy, matrix, new Paint());
 
@@ -226,6 +252,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
         try {
             classifier = Classifier.getInstance(getAssets(), FACE_SIZE, FACE_SIZE);
+            classifier.setListener(this);
+            classifier.count = 0;
         } catch (Exception e) {
             LOGGER.e("Exception initializing classifier!", e);
             finish();
@@ -235,8 +263,14 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
         initialized = true;
     }
 
+
+    int countCompleted = 0;
+    ArrayList<float[]> list = new ArrayList<>();
+    int SIZE_TRAINNING = 30;
     @Override
     protected void processImage() {
+
+//        LOGGER.e("processImage", "processImage");
         ++timestamp;
         final long currTimestamp = timestamp;
         byte[] originalLuminance = getLuminance();
@@ -274,15 +308,28 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
         runInBackground(
                 () -> {
+                    if(list.size()>SIZE_TRAINNING)return;
                     LOGGER.i("Running detection on image " + currTimestamp);
                     final long startTime = SystemClock.uptimeMillis();
 
                     cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
-                    List<Classifier.Recognition> mappedRecognitions =
-                            classifier.recognizeImage(croppedBitmap,cropToFrameTransform);
 
+//                    List<Classifier.Recognition> mappedRecognitions =
+//                            classifier.recognizeImage(croppedBitmap,cropToFrameTransform);
+
+                    try {
+                        float[] embedded = classifier.updateDataRealTime(mLable, cropCopyBitmap);
+                        Log.d("TAG", "processImage: "+embedded.toString());
+                        list.add(embedded);
+                        if(list.size()==SIZE_TRAINNING){
+//                            classifier.trainData(mLable,list);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-                    tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
+//                    tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
                     trackingOverlay.postInvalidate();
 
                     requestRender();
@@ -300,56 +347,15 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
         return DESIRED_PREVIEW_SIZE;
     }
 
+
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (!initialized) {
-            Snackbar.make(
-                    getWindow().getDecorView().findViewById(R.id.container),
-                    "Try it again later", Snackbar.LENGTH_SHORT)
-                    .show();
-            return;
-        }
+    public void onCompleted() {
 
-        if (resultCode == RESULT_OK) {
-            trainSnackbar.show();
-            button.setEnabled(false);
-            training = true;
-
-            ClipData clipData = data.getClipData();
-            ArrayList<Uri> uris = new ArrayList<>();
-
-            if (clipData == null) {
-                uris.add(data.getData());
-            } else {
-                for (int i = 0; i < clipData.getItemCount(); i++)
-                    uris.add(clipData.getItemAt(i).getUri());
-            }
-
-            new Thread(() -> {
-                try {
-                    classifier.updateData(requestCode, getContentResolver(), uris);
-                } catch (Exception e) {
-                    LOGGER.e(e, "Exception!");
-                } finally {
-                    training = false;
-                }
-                runOnUiThread(() -> {
-                    trainSnackbar.dismiss();
-                    button.setEnabled(true);
-                });
-            }).start();
-
-        }
     }
 
-    public void performFileSearch(int requestCode) {
-//        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-//        intent.addCategory(Intent.CATEGORY_OPENABLE);
-//        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-//        intent.setType("image/*");
+    @Override
+    public void onTrained() {
 
-        Intent intent = new Intent(this,MainTrainingActivity.class);
-        intent.putExtra("lable",requestCode);
-        startActivityForResult(intent, requestCode);
+        //watting training
     }
 }

@@ -79,14 +79,6 @@ public class TrainingActivity extends AppCompatActivity implements Classifier.Co
         }catch (Exception e){
 
         }
-        AssetManager mgr = getAssets();
-        File label = new File(FileUtils.LABEL_FILE);
-        try {
-            label.delete();
-            FileUtils.copyAsset(mgr, FileUtils.LABEL_FILE);
-        }catch (Exception ex){
-
-        }
 
         Log.d("TAG", "training: START");
         String directoryUrl = Environment.getExternalStorageDirectory()+"/0";
@@ -125,10 +117,17 @@ public class TrainingActivity extends AppCompatActivity implements Classifier.Co
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                Log.d("TAG", "run: "+maxLength);
+                Log.d("TAG", "run: "+count);
                 count++;
                 if(count>=maxLength)
                     dialog.dismiss();
             }
         });
+    }
+
+    @Override
+    public void onTrained() {
+
     }
 }
