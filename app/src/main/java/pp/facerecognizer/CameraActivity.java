@@ -51,8 +51,8 @@ public abstract class CameraActivity extends AppCompatActivity
 
     private static final int PERMISSIONS_REQUEST = 1;
 
-    private static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
-    private static final String PERMISSION_STORAGE = Manifest.permission.WRITE_EXTERNAL_STORAGE;
+    public static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
+    public static final String PERMISSION_STORAGE = Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
     private boolean debug = false;
 

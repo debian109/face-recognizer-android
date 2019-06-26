@@ -161,33 +161,36 @@ public class Classifier {
         synchronized (this) {
             Pair faces[] = mtcnn.detect(bitmap);
 
-            final List<Recognition> mappedRecognitions = new LinkedList<>();
+            if(faces!=null && faces.length>0){
+                final List<Recognition> mappedRecognitions = new LinkedList<>();
 
-            for (Pair face : faces) {
-                RectF rectF = (RectF) face.first;
+                for (Pair face : faces) {
+                    RectF rectF = (RectF) face.first;
 
-                Rect rect = new Rect();
-                rectF.round(rect);
+                    Rect rect = new Rect();
+                    rectF.round(rect);
 
-                FloatBuffer buffer = faceNet.getEmbeddings(bitmap, rect);
-                Pair<Integer, Float> pair = svm.predict(buffer);
+                    FloatBuffer buffer = faceNet.getEmbeddings(bitmap, rect);
+                    Pair<Integer, Float> pair = svm.predict(buffer);
 
-                matrix.mapRect(rectF);
-                Float prob = pair.second;
+                    matrix.mapRect(rectF);
+                    Float prob = pair.second;
 
-                String name;
-                if (prob > 0.5)
-                    name = classNames.get(pair.first);
-                else
-                    name = "Unknown";
+                    String name;
+                    if (prob > 0.5)
+                        name = classNames.get(pair.first);
+                    else
+                        name = "Unknown";
 
-                Recognition result =
-                        new Recognition("" + pair.first, name, prob, rectF);
-                mappedRecognitions.add(result);
+                    Recognition result =
+                            new Recognition("" + pair.first, name, prob, rectF);
+                    mappedRecognitions.add(result);
+                }
+                return mappedRecognitions;
             }
-            return mappedRecognitions;
-        }
 
+        }
+        return null;
     }
 
     public int count =0;

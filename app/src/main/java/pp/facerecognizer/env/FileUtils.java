@@ -53,6 +53,11 @@ public class FileUtils {
         }
     }
 
+    public  static  boolean hasModel(){
+        File model = new File(ROOT+File.separator+MODEL_FILE);
+        return (model.length())>0;
+    }
+
     public static void copyAsset(AssetManager mgr, String filename) {
         InputStream in = null;
         OutputStream out = null;
@@ -95,6 +100,16 @@ public class FileUtils {
         try(FileWriter fw = new FileWriter(ROOT + File.separator + filename, true);
             PrintWriter out = new PrintWriter(new BufferedWriter(fw))) {
             out.println(text);
+        } catch (IOException e) {
+            //exception handling left as an exercise for the reader
+            LOGGER.e(e, "IOException!");
+        }
+    }
+
+    public static void clear(String filename) {
+        try(FileWriter fw = new FileWriter(ROOT + File.separator + filename, false);
+            PrintWriter out = new PrintWriter(new BufferedWriter(fw))) {
+            out.print("");
         } catch (IOException e) {
             //exception handling left as an exercise for the reader
             LOGGER.e(e, "IOException!");
