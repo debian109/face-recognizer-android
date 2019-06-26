@@ -45,7 +45,7 @@ public class FocusView extends View {
 
         mPath.reset();
 
-        mPath.addCircle(canvas.getWidth()/2, canvas.getWidth()/2, canvas.getWidth()/2.7f, Path.Direction.CW);
+        mPath.addCircle(canvas.getWidth()/2, canvas.getWidth()/1.5f, canvas.getWidth()/2.7f, Path.Direction.CW);
         mPath.setFillType(Path.FillType.INVERSE_EVEN_ODD);
         canvas.drawCircle(canvas.getWidth() / 2, canvas.getHeight() / 2, canvas.getWidth()/2, mTransparentPaint);
         canvas.drawPath(mPath, mSemiBlackPaint);

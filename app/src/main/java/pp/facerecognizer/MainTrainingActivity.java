@@ -34,8 +34,11 @@ import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -98,10 +101,44 @@ public class MainTrainingActivity extends CameraActivity implements OnImageAvail
     private boolean training = false;
     private int mLable = -1;
 
+    Button btStart;
+    TextView tvInfo;
+    ImageView ivClose;
+
+    boolean isStart = false;
+    boolean isFinish = false;
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.training_activity_camera);
+
+        btStart = findViewById(R.id.bt_start);
+        btStart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isFinish) {
+                    finish();
+                }
+                else {
+                    btStart.setText("WAITING");
+                    tvInfo.setText("Please keep your face in a while...");
+                    isStart = true;
+                }
+
+            }
+        });
+        tvInfo = findViewById(R.id.tv_info);
+
+        ivClose = findViewById(R.id.iv_close);
+        ivClose.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+
+
         mLable = getIntent().getIntExtra("lable",-1);
         FrameLayout container = findViewById(R.id.container);
         initSnackbar = Snackbar.make(container, "Initializing...", Snackbar.LENGTH_INDEFINITE);
@@ -308,6 +345,7 @@ public class MainTrainingActivity extends CameraActivity implements OnImageAvail
 
         runInBackground(
                 () -> {
+
                     if(list.size()>SIZE_TRAINNING)return;
                     LOGGER.i("Running detection on image " + currTimestamp);
                     final long startTime = SystemClock.uptimeMillis();
@@ -319,10 +357,25 @@ public class MainTrainingActivity extends CameraActivity implements OnImageAvail
 
                     try {
                         float[] embedded = classifier.updateDataRealTime(mLable, cropCopyBitmap);
-                        Log.d("TAG", "processImage: "+embedded.toString());
-                        list.add(embedded);
+//                     if(embedded!=null&&embedded.length>0){
+                         Log.d("TAG", "processImage: "+embedded.toString());
+                         list.add(embedded);
+//                     }
+
                         if(list.size()==SIZE_TRAINNING){
-//                            classifier.trainData(mLable,list);
+                            runOnUiThread(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            tvInfo.setText("Please wait training...");
+                                            btStart.setText("TRAINING");
+                                        }
+                                    }
+                            );
+
+                                classifier.trainData(mLable,list);
+
+
                         }
 
                     } catch (Exception e) {
@@ -350,6 +403,16 @@ public class MainTrainingActivity extends CameraActivity implements OnImageAvail
 
     @Override
     public void onCompleted() {
+        runOnUiThread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        tvInfo.setText("Training done.");
+                        isFinish = true;
+                        btStart.setText("DONE");
+                    }
+                }
+        );
 
     }
 

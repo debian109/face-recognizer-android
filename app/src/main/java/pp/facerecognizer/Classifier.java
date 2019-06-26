@@ -197,13 +197,8 @@ public class Classifier {
 
     float[] updateDataRealTime(int label, Bitmap bitmap) throws Exception {
 
-            ArrayList<float[]> list = new ArrayList<>();
-
-            long prodTime = System.currentTimeMillis();
-                Log.d("TAG", "training RealTime FACEEEEEE "+ prodTime);
                 Pair faces[] = mtcnn.detect(bitmap);
-            long time =TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - prodTime);
-            Log.d("TAG", "training RealTime ENDDDDD "+ time);
+
                 if(faces.length>0){
                     count++;
                     listener.onTrained();
@@ -235,6 +230,7 @@ public class Classifier {
     protected void trainData(int label, ArrayList<float[]> list){
         svm.train(label, list);
         listener.onCompleted();
+
     }
 
 
