@@ -29,5 +29,13 @@
         android:layout_margin="15dp"
         android:tint="@android:color/white"
         android:src="@android:drawable/ic_input_add"/>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/switchButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_margin="15dp"
+        android:tint="@android:color/white"
+        android:src="@android:drawable/stat_notify_sync"/>
 
 </FrameLayout>

@@ -24,6 +24,7 @@ import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
+import android.hardware.camera2.CameraCharacteristics;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TypedValue;
@@ -95,9 +96,11 @@ public class MultiBoxTracker {
 
     private int sensorOrientation;
     private Context context;
+    private Integer facing;
 
-    public MultiBoxTracker(final Context context) {
+    public MultiBoxTracker(final Context context,Integer facing) {
         this.context = context;
+        this.facing =facing;
         for (final int color : COLORS) {
             availableColors.add(color);
         }
@@ -174,7 +177,7 @@ public class MultiBoxTracker {
                         (int) (multiplier * (rotated ? frameHeight : frameWidth)),
                         (int) (multiplier * (rotated ? frameWidth : frameHeight)),
                         sensorOrientation,
-                        false);
+                        false,facing == CameraCharacteristics.LENS_FACING_FRONT);
         for (final TrackedRecognition recognition : trackedObjects) {
             final RectF trackedPos =
                     (objectTracker != null)

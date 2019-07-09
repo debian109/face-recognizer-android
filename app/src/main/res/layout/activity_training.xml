@@ -20,13 +20,4 @@
         android:text="Go to Camera"
         android:layout_height="wrap_content" />
 
-    <EditText
-        android:id="@+id/et"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/btTrain"
-        android:layout_centerHorizontal="true"
-        android:inputType="number"
-        android:text="100" />
-
 </RelativeLayout>

@@ -25,6 +25,15 @@ public class FileUtils {
     public static final String MODEL_FILE = "model";
     public static final String LABEL_FILE = "label";
 
+    public static void clear(String filename) {
+        try(FileWriter fw = new FileWriter(ROOT + File.separator + filename, false);
+            PrintWriter out = new PrintWriter(new BufferedWriter(fw))) {
+            out.print("");
+        } catch (IOException e) {
+            //exception handling left as an exercise for the reader
+        }
+    }
+
     /**
      * Saves a Bitmap object to disk for analysis.
      *
@@ -100,16 +109,6 @@ public class FileUtils {
         try(FileWriter fw = new FileWriter(ROOT + File.separator + filename, true);
             PrintWriter out = new PrintWriter(new BufferedWriter(fw))) {
             out.println(text);
-        } catch (IOException e) {
-            //exception handling left as an exercise for the reader
-            LOGGER.e(e, "IOException!");
-        }
-    }
-
-    public static void clear(String filename) {
-        try(FileWriter fw = new FileWriter(ROOT + File.separator + filename, false);
-            PrintWriter out = new PrintWriter(new BufferedWriter(fw))) {
-            out.print("");
         } catch (IOException e) {
             //exception handling left as an exercise for the reader
             LOGGER.e(e, "IOException!");

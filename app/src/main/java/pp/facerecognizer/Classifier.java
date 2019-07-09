@@ -29,14 +29,18 @@ import android.util.Log;
 import java.io.FileDescriptor;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import androidx.core.util.Pair;
 import pp.facerecognizer.env.FileUtils;
+import pp.facerecognizer.env.Logger;
 import pp.facerecognizer.wrapper.FaceNet;
 import pp.facerecognizer.wrapper.LibSVM;
 import pp.facerecognizer.wrapper.MTCNN;
+
 
 /**
  * Generic interface for interacting with different recognition engines.
@@ -124,6 +128,7 @@ public class Classifier {
     private LibSVM svm;
 
     private List<String> classNames;
+    private static final Logger LOGGER = new Logger();
 
     private Classifier() {}
 
@@ -159,125 +164,128 @@ public class Classifier {
         synchronized (this) {
             Pair faces[] = mtcnn.detect(bitmap);
 
-            if(faces!=null && faces.length>0){
-                final List<Recognition> mappedRecognitions = new LinkedList<>();
+            final List<Recognition> mappedRecognitions = new LinkedList<>();
+
+            for (Pair face : faces) {
+                RectF rectF = (RectF) face.first;
+
+                Rect rect = new Rect();
+                rectF.round(rect);
+
+                FloatBuffer buffer = faceNet.getEmbeddings(bitmap, rect);
+                Pair<Integer, Float> pair = svm.predict(buffer);
+
+                matrix.mapRect(rectF);
+                Float prob = pair.second;
+
+                String name;
+                if (prob > 0.5)
+                    name = classNames.get(pair.first);
+                else
+                    name = "Unknown";
+
+                Recognition result =
+                        new Recognition("" + pair.first, name, prob, rectF);
+                mappedRecognitions.add(result);
+            }
+            return mappedRecognitions;
+        }
+
+    }
+
+    void updateData(int label, ContentResolver contentResolver, ArrayList<Uri> uris) throws Exception {
+        synchronized (this) {
+            ArrayList<float[]> list = new ArrayList<>();
+
+            for (Uri uri : uris) {
+                Bitmap bitmap = getBitmapFromUri(contentResolver, uri);
+                Pair faces[] = mtcnn.detect(bitmap);
+
+                float max = 0f;
+                Rect rect = new Rect();
 
                 for (Pair face : faces) {
-                    RectF rectF = (RectF) face.first;
+                    Float prob = (Float) face.second;
+                    if (prob > max) {
+                        max = prob;
 
-                    Rect rect = new Rect();
-                    rectF.round(rect);
-
-                    FloatBuffer buffer = faceNet.getEmbeddings(bitmap, rect);
-                    Pair<Integer, Float> pair = svm.predict(buffer);
-
-                    matrix.mapRect(rectF);
-                    Float prob = pair.second;
-
-                    String name;
-                    if (prob > 0.5)
-                        name = classNames.get(pair.first);
-                    else
-                        name = "Unknown";
-
-                    Recognition result =
-                            new Recognition("" + pair.first, name, prob, rectF);
-                    mappedRecognitions.add(result);
+                        RectF rectF = (RectF) face.first;
+                        rectF.round(rect);
+                    }
                 }
-                return mappedRecognitions;
+
+                float[] emb_array = new float[EMBEDDING_SIZE];
+                faceNet.getEmbeddings(bitmap, rect).get(emb_array);
+                list.add(emb_array);
             }
 
+            svm.train(label, list);
+        }
+    }
+
+    void extraction(int label,List<Uri> data,ContentResolver cr){
+        synchronized (this){
+            ArrayList<float[]> list = new ArrayList<>();
+            for (Uri uri:data
+            ) {
+                try {
+                    LOGGER.d(uri.toString());
+                    Bitmap bitmap = getBitmapFromUri(cr,uri);
+                    Pair pair = detect(bitmap);
+                    float[] emb_array = new float[EMBEDDING_SIZE];
+                    faceNet.getEmbeddings((Bitmap) pair.second, (Rect) pair.first).get(emb_array);
+                    list.add(emb_array);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            }
+            svm.train(label,list);
+        }
+    }
+
+    void training(int label,List<Pair> data){
+        synchronized (this){
+            ArrayList<float[]> list = new ArrayList<>();
+            for (Pair pair:data
+            ) {
+                float[] emb_array = new float[EMBEDDING_SIZE];
+
+                faceNet.getEmbeddings((Bitmap) pair.second, (Rect) pair.first).get(emb_array);
+                list.add(emb_array);
+            }
+            svm.train(label,list);
+        }
+    }
+
+
+    Pair<Rect,Bitmap> detect(final Bitmap bitmap){
+        Pair faces[] = mtcnn.detect(bitmap);
+        if(faces.length>0){
+            float max = 0f;
+            Rect rect = new Rect();
+
+            for (Pair face : faces) {
+                Float prob = (Float) face.second;
+                if (prob > max) {
+                    max = prob;
+
+                    RectF rectF = (RectF) face.first;
+                    rectF.round(rect);
+                }
+            }
+
+            return new Pair(rect,bitmap);
         }
         return null;
-    }
-
-    void updateData(int label, ContentResolver contentResolver, List<Uri> uris) throws Exception {
-        synchronized (this) {
-            ArrayList<float[]> list = new ArrayList<>();
-
-            for (Uri uri : uris) {
-                Bitmap bitmap = getBitmapFromUri(contentResolver, uri);
-                Log.d("TAG", "training"+bitmap.toString());
-                Pair faces[] = mtcnn.detect(bitmap);
-
-                float max = 0f;
-                Rect rect = new Rect();
-
-                for (Pair face : faces) {
-                    Float prob = (Float) face.second;
-                    if (prob > max) {
-                        max = prob;
-
-                        RectF rectF = (RectF) face.first;
-                        rectF.round(rect);
-                    }
-                }
-
-                float[] emb_array = new float[EMBEDDING_SIZE];
-                faceNet.getEmbeddings(bitmap, rect).get(emb_array);
-                list.add(emb_array);
-            }
-
-            svm.train(label, list);
-            if(listener!=null)
-                listener.onCompleted();
-            Log.d("TAG", "training: DONE");
-        }
-    }
-
-    CompleteListener listener;
-
-    void setListener(CompleteListener listener){
-        this.listener = listener;
-    }
-
-    interface  CompleteListener{
-        void onCompleted();
-    }
 
 
-
-    void training(int label,ArrayList<float[]> list){
-        synchronized (this) {
-            Log.d("TAG", "run: " +list);
-            svm.train(label, list);
-        }
-    }
-
-    Pair<Integer,ArrayList<float[]>> updateData1(int label, ContentResolver contentResolver, List<Uri> uris) throws Exception {
-        synchronized (this) {
-            ArrayList<float[]> list = new ArrayList<>();
-
-            for (Uri uri : uris) {
-                Bitmap bitmap = getBitmapFromUri(contentResolver, uri);
-                Pair faces[] = mtcnn.detect(bitmap);
-                float max = 0f;
-                Rect rect = new Rect();
-
-                for (Pair face : faces) {
-                    Float prob = (Float) face.second;
-                    if (prob > max) {
-                        max = prob;
-
-                        RectF rectF = (RectF) face.first;
-                        rectF.round(rect);
-                    }
-                }
-
-                float[] emb_array = new float[EMBEDDING_SIZE];
-                faceNet.getEmbeddings(bitmap, rect).get(emb_array);
-                list.add(emb_array);
-            }
-            return new Pair(label,list);
-
-        }
     }
 
     int addPerson(String name) {
-        if(!classNames.contains(name)){
-            FileUtils.appendText(name, FileUtils.LABEL_FILE);
-            classNames.add(name);
-        }
+        FileUtils.appendText(name, FileUtils.LABEL_FILE);
+        classNames.add(name);
+
         return classNames.size();
     }
 

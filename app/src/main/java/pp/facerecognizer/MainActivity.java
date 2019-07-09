@@ -26,16 +26,17 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.hardware.camera2.CameraCharacteristics;
 import android.media.ImageReader.OnImageAvailableListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -93,14 +94,20 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     private Snackbar initSnackbar;
     private Snackbar trainSnackbar;
     private FloatingActionButton button;
+    private FloatingActionButton switchButton;
 
     private boolean initialized = false;
     private boolean training = false;
 
+
+    @Override
+    Integer getFacing() {
+        return CameraCharacteristics.LENS_FACING_BACK;
+    }
+
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         FrameLayout container = findViewById(R.id.container);
         initSnackbar = Snackbar.make(container, "Initializing...", Snackbar.LENGTH_INDEFINITE);
         trainSnackbar = Snackbar.make(container, "Training data...", Snackbar.LENGTH_INDEFINITE);
@@ -117,6 +124,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                 .create();
 
         button = findViewById(R.id.add_button);
+        switchButton = findViewById(R.id.switchButton);
         button.setOnClickListener(view ->
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle(getString(R.string.select_name))
@@ -128,6 +136,11 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                             }
                         })
                         .show());
+        switchButton.setOnClickListener(view->{
+            Intent intent = new Intent(this, Main2Activity.class);
+            startActivity(intent);
+            finish();
+        });
     }
 
     @Override
@@ -140,8 +153,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                 TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
         borderedText = new BorderedText(textSizePx);
         borderedText.setTypeface(Typeface.MONOSPACE);
-
-        tracker = new MultiBoxTracker(this);
+        Log.d("TAG", "onCreate: "+getFacing());
+        tracker = new MultiBoxTracker(this,getFacing());
 
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();
@@ -157,7 +170,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                 ImageUtils.getTransformationMatrix(
                         previewWidth, previewHeight,
                         CROP_SIZE, CROP_SIZE,
-                        sensorOrientation, false);
+                        sensorOrientation, false,getFacing()==CameraCharacteristics.LENS_FACING_FRONT);
 
         cropToFrameTransform = new Matrix();
         frameToCropTransform.invert(cropToFrameTransform);
@@ -275,10 +288,6 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
         runInBackground(
                 () -> {
-                    if(!FileUtils.hasModel()){
-                        Toast.makeText(this, "Please Training data!", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
                     LOGGER.i("Running detection on image " + currTimestamp);
                     final long startTime = SystemClock.uptimeMillis();
 
@@ -287,10 +296,8 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
                             classifier.recognizeImage(croppedBitmap,cropToFrameTransform);
 
                     lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-                    if(mappedRecognitions!=null){
-                        tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
-                        trackingOverlay.postInvalidate();
-                    }
+                    tracker.trackResults(mappedRecognitions, luminanceCopy, currTimestamp);
+                    trackingOverlay.postInvalidate();
 
                     requestRender();
                     computingDetection = false;
@@ -350,11 +357,14 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     }
 
     public void performFileSearch(int requestCode) {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        intent.setType("image/*");
-
-        startActivityForResult(intent, requestCode);
+//        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+//        intent.addCategory(Intent.CATEGORY_OPENABLE);
+//        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+//        intent.setType("image/*");
+//
+//        startActivityForResult(intent, requestCode);
+        Intent intent = new Intent(this,DetectionActivity.class);
+        intent.putExtra("label",requestCode);
+        startActivity(intent);
     }
 }

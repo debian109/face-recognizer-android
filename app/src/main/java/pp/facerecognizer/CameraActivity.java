@@ -68,6 +68,7 @@ public abstract class CameraActivity extends AppCompatActivity
 
     private Runnable postInferenceCallback;
     private Runnable imageConverter;
+    abstract Integer getFacing();
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -258,7 +259,7 @@ public abstract class CameraActivity extends AppCompatActivity
 
                 // We don't use a front facing camera in this sample.
                 final Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                if (facing != null && !facing.equals(getFacing())) {
                     continue;
                 }
 
